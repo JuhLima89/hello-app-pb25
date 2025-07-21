@@ -72,7 +72,7 @@ jobs:
         if: env.BRANCH != ''
         uses: peter-evans/create-pull-request@v5
         with:
-          token: ${{ secrets.GH_PAT_MANIFESTS }}
+          token: ${{ secrets.GH_PAT_MANIFEST }}
           commit-message: Update image to $IMAGE_TAG
           title: Update image to $IMAGE_TAG
           body: Atualiza a imagem do hello-app com a tag `$IMAGE_TAG`
