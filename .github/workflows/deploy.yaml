@@ -38,7 +38,7 @@ jobs:
       - name: Checkout manifests repo via SSH
         uses: actions/checkout@v4
         with:
-          repository: julianaaml/hello-manifests
+          repository: JuhLima89/hello-manifests
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
           path: manifests
 
@@ -52,9 +52,11 @@ jobs:
           cd manifests
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b update-image-$(date +%s)
+          BRANCH=update-image-$(date +%s)
+          git checkout -b $BRANCH
           git commit -am "Update image to latest"
-          git push origin HEAD
+          git push origin $BRANCH
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
@@ -64,5 +66,5 @@ jobs:
           title: Update image to latest
           body: Atualiza a imagem do hello-app para o Docker Hub
           base: main
-          branch: update-image
+          branch: ${{ env.BRANCH }}
           path: manifests
