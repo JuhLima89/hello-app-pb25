@@ -51,19 +51,37 @@ jobs:
           token: ${{ secrets.GH_PAT_MANIFEST }}
           path: manifests
 
-      - name: Substituir a tag da imagem no deployment.yaml
+      - name: Mostrar imagem ANTES do sed (debug)
+        run: |
+          cd manifests
+          echo "ANTES DO SED:"
+          grep 'image:' deployment.yaml || echo "Imagem não encontrada."
+
+      - name: Substituir REPLACE_IMAGE_TAG pela nova tag
         run: |
           cd manifests
           sed -i "s|REPLACE_IMAGE_TAG|${IMAGE_TAG}|" deployment.yaml
 
-      - name: Commit e push das mudanças
+      - name: Mostrar imagem DEPOIS do sed (debug)
         run: |
           cd manifests
+          echo "DEPOIS DO SED:"
+          grep 'image:' deployment.yaml || echo "Imagem não encontrada."
+
+      - name: Verificar alterações no git antes do commit (debug)
+        run: |
+          cd manifests
+          git status
+          git diff
+
+      - name: Commit e push das mudanças
+        working-directory: manifests
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           BRANCH=update-image-$(date +%s)
-          git checkout -b $BRANCH
+          git switch -c $BRANCH
 
           git add deployment.yaml
 
