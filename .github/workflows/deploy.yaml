@@ -51,10 +51,20 @@ jobs:
           token: ${{ secrets.GH_PAT_MANIFEST }}
           path: manifests
 
-      - name: Update image tag in deployment.yaml
+      - name: Show current image line before sed (debug)
         run: |
           cd manifests
-          sed -i "s|image:.*|image: julianaaml/hello-app:${IMAGE_TAG}|" deployment.yaml
+          grep 'image:' deployment.yaml || echo "Nenhuma linha com 'image:' encontrada"
+
+      - name: Update image tag placeholder in deployment.yaml
+        run: |
+          cd manifests
+          sed -i "s|REPLACE_IMAGE_TAG|${IMAGE_TAG}|" deployment.yaml
+
+      - name: Show current image line after sed (debug)
+        run: |
+          cd manifests
+          grep 'image:' deployment.yaml
 
       - name: Commit and push changes (only if needed)
         run: |
