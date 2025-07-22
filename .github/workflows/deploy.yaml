@@ -66,6 +66,12 @@ jobs:
           cd manifests
           grep 'image:' deployment.yaml
 
+      - name: Check git status and diff for debugging
+        run: |
+          cd manifests
+          git status
+          git diff
+
       - name: Commit and push changes (only if needed)
         run: |
           cd manifests
