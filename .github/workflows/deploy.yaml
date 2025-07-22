@@ -82,12 +82,14 @@ jobs:
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           git checkout -b $BRANCH
 
-          if git diff --quiet; then
+          git add .
+
+          if git diff --cached --quiet; then
             echo "Nada para commitar. Encerrando sem criar PR."
             exit 0
           fi
 
-          git commit -am "Update image to $IMAGE_TAG"
+          git commit -m "Update image to $IMAGE_TAG"
           git push origin $BRANCH
 
       - name: Create Pull Request
