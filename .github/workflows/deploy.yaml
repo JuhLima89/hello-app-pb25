@@ -51,38 +51,21 @@ jobs:
           token: ${{ secrets.GH_PAT_MANIFEST }}
           path: manifests
 
-      - name: Show current image line before sed (debug)
-        run: |
-          cd manifests
-          grep 'image:' deployment.yaml || echo "Nenhuma linha com 'image:' encontrada"
-
-      - name: Update image tag placeholder in deployment.yaml
+      - name: Substituir a tag da imagem no deployment.yaml
         run: |
           cd manifests
           sed -i "s|REPLACE_IMAGE_TAG|${IMAGE_TAG}|" deployment.yaml
 
-      - name: Show current image line after sed (debug)
-        run: |
-          cd manifests
-          grep 'image:' deployment.yaml
-
-      - name: Check git status and diff for debugging
-        run: |
-          cd manifests
-          git status
-          git diff
-
-      - name: Commit and push changes (only if needed)
+      - name: Commit e push das mudanças
         run: |
           cd manifests
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           BRANCH=update-image-$(date +%s)
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           git checkout -b $BRANCH
 
-          git add .
+          git add deployment.yaml
 
           if git diff --cached --quiet; then
             echo "Nada para commitar. Encerrando sem criar PR."
@@ -91,15 +74,16 @@ jobs:
 
           git commit -m "Update image to $IMAGE_TAG"
           git push origin $BRANCH
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
-      - name: Create Pull Request
+      - name: Criar Pull Request
         if: env.BRANCH != ''
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GH_PAT_MANIFEST }}
           commit-message: Update image to $IMAGE_TAG
           title: Update image to $IMAGE_TAG
-          body: Atualiza a imagem do hello-app com a tag `$IMAGE_TAG`
+          body: Atualiza a imagem do hello-app com a tag `${{ env.IMAGE_TAG }}`
           base: main
           branch: ${{ env.BRANCH }}
           path: manifests
