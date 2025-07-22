@@ -51,48 +51,50 @@ jobs:
           token: ${{ secrets.GH_PAT_MANIFEST }}
           path: manifests
 
-      - name: Mostrar imagem ANTES do sed (debug)
+      - name: Ver imagem ANTES do sed
         run: |
-          cd manifests
           echo "ANTES DO SED:"
-          grep 'image:' deployment.yaml || echo "Imagem não encontrada."
+          grep 'image:' manifests/deployment.yaml || echo "Imagem não encontrada."
 
       - name: Substituir REPLACE_IMAGE_TAG pela nova tag
         run: |
-          cd manifests
-          sed -i "s|REPLACE_IMAGE_TAG|${IMAGE_TAG}|" deployment.yaml
+          sed -i "s|REPLACE_IMAGE_TAG|${IMAGE_TAG}|" manifests/deployment.yaml
 
-      - name: Mostrar imagem DEPOIS do sed (debug)
+      - name: Ver imagem DEPOIS do sed
         run: |
-          cd manifests
           echo "DEPOIS DO SED:"
-          grep 'image:' deployment.yaml || echo "Imagem não encontrada."
+          grep 'image:' manifests/deployment.yaml || echo "Imagem não encontrada."
 
-      - name: Verificar alterações no git antes do commit (debug)
+      - name: Ver git status e diff
         run: |
-          cd manifests
+          pushd manifests
           git status
           git diff
+          popd
 
       - name: Commit e push das mudanças
-        working-directory: manifests
         run: |
+          pushd manifests
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           BRANCH=update-image-$(date +%s)
-          git switch -c $BRANCH
+          git checkout -b $BRANCH
 
           git add deployment.yaml
 
           if git diff --cached --quiet; then
             echo "Nada para commitar. Encerrando sem criar PR."
+            popd
             exit 0
           fi
 
           git commit -m "Update image to $IMAGE_TAG"
           git push origin $BRANCH
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+          popd
 
       - name: Criar Pull Request
         if: env.BRANCH != ''
