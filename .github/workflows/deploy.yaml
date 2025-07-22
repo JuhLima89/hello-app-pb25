@@ -10,7 +10,7 @@ jobs:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ steps.set_image_tag.outputs.tag }}
+      image_tag: ${{ steps.set_image_tag.outputs.image_tag }}
 
     steps:
       - name: Checkout source code
@@ -26,7 +26,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image
-        id: docker_build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -37,53 +36,76 @@ jobs:
 
       - name: Set image tag output
         id: set_image_tag
-        run: echo "tag=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+        run: echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
 
   update-manifests:
-    name: Update Image Tag in Manifest Repo
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    env:
-      IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+      name: Update Image in Manifest Repo
+      needs: build-and-push
+      runs-on: ubuntu-latest
+      env:
+        IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
 
-    steps:
-      - name: Checkout manifests repo
-        uses: actions/checkout@v4
-        with:
-          repository: JuhLima89/hello-manifests-pb25
-          token: ${{ secrets.GH_PAT_MANIFEST }}
-          path: manifests
+      steps:
+        - name: Checkout manifests repo via PAT
+          uses: actions/checkout@v4
+          with:
+            repository: JuhLima89/hello-manifests-pb25
+            token: ${{ secrets.GH_PAT_MANIFEST }}
+            path: manifests
 
-      - name: Substituir tag da imagem no deployment.yaml
-        run: |
-          sed -i "s|REPLACE_IMAGE_TAG|${IMAGE_TAG}|" manifests/deployment.yaml
+        - name:
+            Debug: Ver imagem ANTES do sed
+          run: |
+            echo "ANTES DO SED:"
+            grep 'image:' manifests/deployment.yaml || echo "Imagem não encontrada."
 
-      - name: Commit e push da mudança
-        run: |
-          cd manifests
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
-          BRANCH=update-image-${IMAGE_TAG}
-          git checkout -b $BRANCH
-          git add deployment.yaml
+        - name: Substituir REPLACE_IMAGE_TAG pela nova tag
+          run: |
+            sed -i "s|REPLACE_IMAGE_TAG|${IMAGE_TAG}|" manifests/deployment.yaml
 
-          if git diff --cached --quiet; then
-            echo "Nada para commitar."
-            exit 0
-          fi
+        - name:
+            Debug: Ver imagem DEPOIS do sed
+          run: |
+            echo "DEPOIS DO SED:"
+            grep 'image:' manifests/deployment.yaml || echo "Imagem não encontrada."
 
-          git commit -m "Update image to $IMAGE_TAG"
-          git push origin $BRANCH
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+        - name:
+            Debug: Ver git status e diff
+          run: |
+            cd manifests
+            git status
+            git diff
 
-      - name: Criar Pull Request
-        if: env.BRANCH != ''
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GH_PAT_MANIFEST }}
-          commit-message: Update image to ${{ env.IMAGE_TAG }}
-          title: Update image to ${{ env.IMAGE_TAG }}
-          body: Atualiza a imagem do hello-app com a tag `${{ env.IMAGE_TAG }}`
-          base: main
-          branch: ${{ env.BRANCH }}
+        - name: Commit e push das mudanças
+          id: commit_changes
+          run: |
+            cd manifests
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            BRANCH=update-image-${IMAGE_TAG}
+            git checkout -b "$BRANCH" || git checkout "$BRANCH"
+
+            git add deployment.yaml
+
+            if git diff --cached --quiet; then
+              echo "Nada para commitar. Encerrando sem criar PR."
+              echo "BRANCH=" >> $GITHUB_ENV
+              exit 0
+            fi
+
+            git commit -m "Update image to ${IMAGE_TAG}"
+            git push origin "$BRANCH"
+            echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+        - name: Criar Pull Request
+          if: ${{ env.BRANCH != '' }}
+          uses: peter-evans/create-pull-request@v5
+          with:
+            token: ${{ secrets.GH_PAT_MANIFEST }}
+            path: manifests
+            commit-message: Update image to ${{ env.IMAGE_TAG }}
+            title: Update image to ${{ env.IMAGE_TAG }}
+            body: Atualiza a imagem do hello-app com a tag `${{ env.IMAGE_TAG }}`
+            base: main
+            branch: ${{ env.BRANCH }}
