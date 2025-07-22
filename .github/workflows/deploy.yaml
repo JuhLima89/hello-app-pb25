@@ -9,6 +9,8 @@ jobs:
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set_image_tag.outputs.image_tag }}
 
     steps:
       - name: Checkout source code
@@ -30,13 +32,16 @@ jobs:
           push: true
           tags: julianaaml/hello-app:${{ github.sha }}
 
-      - name: Save image tag for next job
-        run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+      - name: Set image tag output
+        id: set_image_tag
+        run: echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
 
   update-manifests:
     name: Update Image in Manifest Repo
     needs: build-and-push
     runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
 
     steps:
       - name: Checkout manifests repo via PAT
