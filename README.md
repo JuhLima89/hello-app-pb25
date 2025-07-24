@@ -120,6 +120,11 @@ hello-app-pb25/
 ├── requirements.txt
 └── README.md
 ```
+## Deploy com Manifests
+
+Os manifests Kubernetes usados para fazer o deploy dessa aplicação estão disponíveis no repositório:
+
+[hello-manifests-pb25](https://github.com/JuhLima89/hello-manifests-pb25)
 
 ### 2. Repositório de Manifests Kubernetes: `hello-manifests-pb25`
 
